@@ -95,6 +95,3 @@ def setKey():
 #     else:
 #         print(res.status_code, res.text)
 #         return None
-
-
-app.run("0.0.0.0")
