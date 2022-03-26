@@ -97,4 +97,4 @@ def setKey():
 #         return None
 
 
-app.run()
+app.run("0.0.0.0")
