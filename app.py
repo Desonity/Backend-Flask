@@ -12,8 +12,6 @@ app = Flask(__name__)
 app.secret_key = config["FLASK_SECRET_KEY"]
 app.debug = True
 
-reciever = config["TEST_RECIEVER"]
-
 AUTH_DATA = dict({})
 
 
