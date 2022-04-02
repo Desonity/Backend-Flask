@@ -1,15 +1,16 @@
 import json
 import uuid
 from flask import Flask, render_template, session, request
+from static.py.Sign import Sign_Transaction
+from decouple import config
 
 BASE_API = "https://diamondapp.com/api/v0/"
 
-config = json.load(open("config.json", "r"))
 app = Flask(__name__)
 # feel free to change secret key but keep it private
-# This is used to safely store data in flask session locally in the browser
+# This is used to store data in flask session locally in the browser
 # idk how safe this is tho
-app.secret_key = config["FLASK_SECRET_KEY"]
+app.secret_key = config("FLASK_SECRET_KEY")
 app.debug = True
 
 AUTH_DATA = dict({})
@@ -69,29 +70,38 @@ def setKey():
     return "OK"
 
 
-# @app.route("/create-txn", methods=["POST"])
-# def create_txn():
-#     payload = request.get_json(force=True)
-#     endpoint = BASE_API + payload["Endpoint"]
-#     data = payload["Data"]
-#     res = requests.post(endpoint, json=data)
-#     if res.status_code == 200:
-#         return res.json()["TransactionHex"]
-#     else:
-#         print(res.status_code, res.text)
-#         return None
+@app.route("/signTxn", methods=["POST"])
+def signTxn():
+    data = request.get_json(force=True)
+    txnHex = data["txnHex"]
+    try:
+        seedHex = data["seedHex"]
+    except Exception:
+        return ""
+    return Sign_Transaction(seedHex, txnHex)
 
+    # @app.route("/create-txn", methods=["POST"])
+    # def create_txn():
+    #     payload = request.get_json(force=True)
+    #     endpoint = BASE_API + payload["Endpoint"]
+    #     data = payload["Data"]
+    #     res = requests.post(endpoint, json=data)
+    #     if res.status_code == 200:
+    #         return res.json()["TransactionHex"]
+    #     else:
+    #         print(res.status_code, res.text)
+    #         return None
 
-# @app.route("/submit-txn", methods=["POST"])
-# def submit():
-#     payload = request.get_json(force=True)
-#     endpoint = BASE_API + "submit-transaction"
-#     data = {
-#         "TransactionHex": payload["TransactionHex"]
-#     }
-#     res = requests.post(endpoint, json=data)
-#     if res.status_code == 200:
-#         return res.json()["TxnHashHex"]
-#     else:
-#         print(res.status_code, res.text)
-#         return None
+    # @app.route("/submit-txn", methods=["POST"])
+    # def submit():
+    #     payload = request.get_json(force=True)
+    #     endpoint = BASE_API + "submit-transaction"
+    #     data = {
+    #         "TransactionHex": payload["TransactionHex"]
+    #     }
+    #     res = requests.post(endpoint, json=data)
+    #     if res.status_code == 200:
+    #         return res.json()["TxnHashHex"]
+    #     else:
+    #         print(res.status_code, res.text)
+    #         return None
