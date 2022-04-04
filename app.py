@@ -1,5 +1,6 @@
 import json
 import uuid
+import asyncio
 from flask import Flask, render_template, session, request
 from static.py.Sign import Sign_Transaction
 from decouple import config
@@ -24,7 +25,7 @@ def is_valid_uuid(val):
         return False
 
 
-@app.route("/login/<uuid_token>")
+@app.route("/login/<uuid_token>", methods=["GET", "POST"])
 def home(uuid_token):
     requester_name = request.args.get("appname")
     try:
@@ -35,6 +36,7 @@ def home(uuid_token):
     if logged_in_key:
         if is_valid_uuid(uuid_token):
             AUTH_DATA[uuid_token] = logged_in_key
+            del session["LoggedInUser"]
             return render_template("home.html", data={"loggedInKey": logged_in_key, "requester": requester_name})
         else:
             return render_template("home.html", data={"error": "Invalid UUID"})
@@ -55,7 +57,6 @@ def getKey():
     if is_valid_uuid(uuid_token):
         if uuid_token in AUTH_DATA:
             pkey = AUTH_DATA[uuid_token]
-            session.pop("LoggedInUser", None)
             del AUTH_DATA[uuid_token]
             return pkey
         else:
@@ -76,8 +77,8 @@ def signTxn():
     txnHex = data["txnHex"]
     try:
         seedHex = data["seedHex"]
-    except Exception:
-        return ""
+    except Exception as e:
+        return "No Seed Hex found", 400
     return Sign_Transaction(seedHex, txnHex)
 
     # @app.route("/create-txn", methods=["POST"])
