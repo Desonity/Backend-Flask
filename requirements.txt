@@ -2,3 +2,5 @@ flask
 aioflask
 gunicorn
 python-decouple
+requests
+
