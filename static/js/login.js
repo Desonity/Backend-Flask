@@ -1,17 +1,30 @@
 /*responsible for user login*/
-function login() {
-    identityWindow = window.open(
-        "https://identity.deso.org/log-in?accessLevelRequest=2",
-        null,
-        "toolbar=no, width=800, height=1000, top=0, left=0"
-    );
+
+const spendingLimit = {
+    "GlobalDESOLimit": 1 * 1e9 // 1 DESO
+};
+
+function login(derive) {
+    if (derive) {
+        identityWindow = window.open(
+            "https://identity.deso.org/derive?transactionSpendingLimitResponse=" + JSON.stringify(spendingLimit),
+            null,
+            "toolbar=no, width=800, height=1000, top=0, left=0"
+        );
+    } else {
+        identityWindow = window.open(
+            "https://identity.deso.org/log-in?accessLevelRequest=2",
+            null,
+            "toolbar=no, width=800, height=1000, top=0, left=0"
+        );
+    }
 }
 
-function logout() {
-    axios.post("/logout")
-        .then(() => { window.location.reload() })
-        .catch((e) => { console.log(e) });
-}
+// function logout() {
+//     axios.post("/logout")
+//         .then(() => { window.location.reload() })
+//         .catch((e) => { console.log(e) });
+// }
 
 function handleInit(e) {
     if (!init) {
@@ -35,15 +48,39 @@ function handleLogin(payload) {
     }
     if (payload.publicKeyAdded) {
         console.log("got the key " + payload.publicKeyAdded);
-        axios.post("/setKey", { "PublicKey": payload.publicKeyAdded })
-            .then(() => { window.location.reload() })
-            .catch((e) => { console.log(e) });
+        axios.post("/setKey", { "publicKey": payload.publicKeyAdded })
+            .catch((e) => { console.log(e) })
+            .then(() => { window.location.replace('/success') });
     }
-    if (payload.signedTransactionHex) {
-        console.log("transaction signed " + payload.signedTransactionHex);
-        axios.post("/submit-txn", { "TransactionHex": payload.signedTransactionHex })
-            .then((res) => { console.log("transaction submitted " + res.data); alert("Transaction successfull") });
+    // if (payload.signedTransactionHex) {
+    //     console.log("transaction signed " + payload.signedTransactionHex);
+    //     axios.post("/submit-txn", { "TransactionHex": payload.signedTransactionHex })
+    //         .then((res) => { console.log("transaction submitted " + res.data); alert("Transaction successfull") });
+    // }
+}
+
+function handleDerive(payload) {
+    if (identityWindow) {
+        identityWindow.close();
+        identityWindow = null;
     }
+    console.log(payload);
+
+    if (payload.derivedPublicKeyBase58Check) {
+        console.log("got the key " + payload.derivedPublicKeyBase58Check);
+        axios.post("/setKey", {
+            "derivedKey": payload.derivedPublicKeyBase58Check,
+            "derivedSeedHex": payload.derivedSeedHex,
+            "publicKey": payload.publicKeyBase58Check,
+            "expirationBlock": payload.expirationBlock,
+            "accessSignature": payload.accessSignature,
+            "transactionSpendingLimitHex": payload.transactionSpendingLimitHex,
+        })
+            .catch((e) => { console.log(e) })
+            .then(() => { window.location.replace('/success') });
+
+    }
+
 }
 
 
@@ -81,6 +118,8 @@ window.addEventListener("message", (message) => {
         handleInit(message);
     } else if (method == "login") {
         handleLogin(payload);
+    } else if (method == "derive") {
+        handleDerive(payload);
     }
 });
 

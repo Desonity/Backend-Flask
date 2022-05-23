@@ -4,6 +4,7 @@ import asyncio
 from flask import Flask, render_template, session, request
 from static.py.Sign import Sign_Transaction
 from decouple import config
+import requests
 
 BASE_API = "https://diamondapp.com/api/v0/"
 
@@ -24,62 +25,91 @@ def is_valid_uuid(val):
     except ValueError:
         return False
 
+@app.route("/", methods=["GET"])
+def index():
+    return "NEVER GONNA GIVE YOU UP, NEVER GONNA LET YOU DOWN, NEVER GONNA RUN AROUND AND DESERT YOU"
 
-@app.route("/login/<uuid_token>", methods=["GET", "POST"])
-def home(uuid_token):
-    requester_name = request.args.get("appname")
-    try:
-        logged_in_key = session["LoggedInUser"]
-    except Exception:
-        logged_in_key = None
 
-    if logged_in_key:
-        if is_valid_uuid(uuid_token):
-            AUTH_DATA[uuid_token] = logged_in_key
-            del session["LoggedInUser"]
-            return render_template("home.html", data={"loggedInKey": logged_in_key, "requester": requester_name})
-        else:
-            return render_template("home.html", data={"error": "Invalid UUID"})
+@app.route("/login", methods=["GET", "POST"])
+def home():
+    appname = request.args.get("appname")
+    uuid_token = request.args.get("uuid")
+    derive = request.args.get("derive")
+    session["uuid"] = uuid_token
+
+    if is_valid_uuid(uuid_token):
+        return render_template("home.html", data={"appname": appname, "derive": derive})
     else:
-        return render_template("home.html", data={"requester": requester_name})
+        return render_template("home.html", data={"error": "Invalid Data"})
 
-
-@app.route("/logout", methods=["POST"])
-def logout():
-    session.pop("LoggedInUser", None)
-    return "OK"
-
+@app.route("/success", methods=["GET"])
+def success():
+    session.clear()
+    return render_template("success.html")
 
 @app.route("/getKey", methods=["POST"])
 def getKey():
     data = request.get_json(force=True)
+    if data is None:
+        return (400, "")
     uuid_token = data["uuid"]
     if is_valid_uuid(uuid_token):
         if uuid_token in AUTH_DATA:
-            pkey = AUTH_DATA[uuid_token]
+            data = AUTH_DATA[uuid_token]
             del AUTH_DATA[uuid_token]
-            return pkey
+            return data
         else:
             return ""
 
 
-@app.route("/setKey", methods=["POST"])
+@app.route("/setKey", methods=["GET","POST"])
 def setKey():
     # once logged in, you can perform actions on this public key
     data = request.get_json(force=True)
-    session["LoggedInUser"] = data["PublicKey"]
-    return "OK"
+    if data is None:
+        return (400, "")
+    uuid_token = session["uuid"]
+    print(data)
+    publicKey = data["publicKey"]
+    if "derivedKey" not in data:
+        AUTH_DATA[uuid_token] = {"publicKey": publicKey}
+        print("pubKey login success")
+        return "OK"
+    derivedKey = data["derivedKey"]
+    derivedSeed = data["derivedSeedHex"]
+    accessSignature = data["accessSignature"]
+    expirationBlock = data["expirationBlock"]
+    txnSpendingLimitHex = data["transactionSpendingLimitHex"]
+
+    payload = {
+        "OwnerPublicKeyBase58Check": publicKey,
+        "DerivedPublicKeyBase58Check": derivedKey,
+        "ExpirationBlock": expirationBlock,
+        "AccessSignature": accessSignature,
+        "DeleteKey": False,
+        "DerivedKeySignature": True,
+        "MinFeeRateNanosPerKB": 1700,
+        "TransactionSpendingLimitHex": txnSpendingLimitHex,
+    }
+
+    res = requests.post(BASE_API + "authorize-derived-key", json=payload)
+    if res.status_code == 200:
+        AUTH_DATA[uuid_token] = {"publicKey": publicKey, "derivedKey": derivedKey, "derivedSeed": derivedSeed}
+        print("derive login success")
+        return "OK"
+    else:
+        return 400, res.json()
 
 
-@app.route("/signTxn", methods=["POST"])
-def signTxn():
-    data = request.get_json(force=True)
-    txnHex = data["txnHex"]
-    try:
-        seedHex = data["seedHex"]
-    except Exception as e:
-        return "No Seed Hex found", 400
-    return Sign_Transaction(seedHex, txnHex)
+# @app.route("/signTxn", methods=["POST"])
+# def signTxn():
+#     data = request.get_json(force=True)
+#     txnHex = data["txnHex"]
+#     try:
+#         seedHex = data["seedHex"]
+#     except Exception as e:
+#         return "No Seed Hex found", 400
+#     return Sign_Transaction(seedHex, txnHex)
 
     # @app.route("/create-txn", methods=["POST"])
     # def create_txn():
