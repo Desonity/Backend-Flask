@@ -1,13 +1,44 @@
 /*responsible for user login*/
 
 const spendingLimit = {
-    "GlobalDESOLimit": 1 * 1e9 // 1 DESO
+    "GlobalDESOLimit": 1 * 1e9, // 1 DESO
+    TransactionCountLimitMap: {
+        AUTHORIZE_DERIVED_KEY: 2,
+        BASIC_TRANSFER: 5,
+        SUBMIT_POST: 5
+    },
+    CreatorCoinOperationLimitMap: {
+        "": {
+            "any": 5,
+            "buy": 5,
+            "sell": 5,
+            "transfer": 5
+        }
+    },
+    DAOCoinOperationLimitMap: {
+        "": {
+            "any": 5,
+            "mint": 5,
+            "burn": 5,
+            "transfer": 5,
+            "update_transfer_restriction_status": 5,
+            "disable_minting": 5
+        }
+    },
+    NFTOperationLimitMap: {
+        "": {
+            0: {
+                "any": 5
+            }
+        }
+    }
+
 };
 
 function login(derive) {
     if (derive) {
         identityWindow = window.open(
-            "https://identity.deso.org/derive?transactionSpendingLimitResponse=" + JSON.stringify(spendingLimit),
+            "https://identity.deso.org/derive?transactionSpendingLimitResponse=" + encodeURIComponent(JSON.stringify(spendingLimit)),
             null,
             "toolbar=no, width=800, height=1000, top=0, left=0"
         );
@@ -50,7 +81,7 @@ function handleLogin(payload) {
         console.log("got the key " + payload.publicKeyAdded);
         axios.post("/setKey", { "publicKey": payload.publicKeyAdded })
             .catch((e) => { console.log(e) })
-            .then(() => { window.location.replace('/success') });
+            .then((res) => { if (res.data === "OK") window.location.replace('/success'); else alert("unable to perform action") });
     }
     // if (payload.signedTransactionHex) {
     //     console.log("transaction signed " + payload.signedTransactionHex);
@@ -77,7 +108,7 @@ function handleDerive(payload) {
             "transactionSpendingLimitHex": payload.transactionSpendingLimitHex,
         })
             .catch((e) => { console.log(e) })
-            .then(() => { window.location.replace('/success') });
+            .then((res) => { if (res.data === "OK") window.location.replace('/success'); else alert("unable to perform action") });
 
     }
 

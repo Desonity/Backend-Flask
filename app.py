@@ -79,8 +79,6 @@ def setKey():
     derivedSeed = data["derivedSeedHex"]
     accessSignature = data["accessSignature"]
     expirationBlock = data["expirationBlock"]
-    txnSpendingLimitHex = data["transactionSpendingLimitHex"]
-
     payload = {
         "OwnerPublicKeyBase58Check": publicKey,
         "DerivedPublicKeyBase58Check": derivedKey,
@@ -89,16 +87,40 @@ def setKey():
         "DeleteKey": False,
         "DerivedKeySignature": True,
         "MinFeeRateNanosPerKB": 1700,
-        "TransactionSpendingLimitHex": txnSpendingLimitHex,
+        # "TransactionSpendingLimitHex": txnSpendingLimitHex,
     }
+    try:
+        txnSpendingLimitHex = data["transactionSpendingLimitHex"]
+        payload["TransactionSpendingLimitHex"] = txnSpendingLimitHex
+    except:
+        print("didnot find txn limit")
+
 
     res = requests.post(BASE_API + "authorize-derived-key", json=payload)
     if res.status_code == 200:
-        AUTH_DATA[uuid_token] = {"publicKey": publicKey, "derivedKey": derivedKey, "derivedSeed": derivedSeed}
-        print("derive login success")
-        return "OK"
+        txnHex = res.json()["TransactionHex"]
+        payload1 = {
+            "TransactionHex": txnHex,
+            "ExtraData": {"DerivedPublicKey":derivedKey}
+        }
+        res1 = requests.post(BASE_API + "append-extra-data", json=payload1)
+        if res1.status_code == 200:
+            txnHexFinal = res1.json()["TransactionHex"]
+            signedTxnHex = Sign_Transaction(derivedSeed, txnHexFinal)
+            submit = requests.post(BASE_API + "submit-transaction", json={"TransactionHex": signedTxnHex})
+            if submit.status_code == 200:
+                AUTH_DATA[uuid_token] = {"publicKey": publicKey, "derivedKey": derivedKey, "derivedSeed": derivedSeed}
+                print("derive login success")
+                return "OK"
+            else:
+                print("submit error ",submit.json())
+                return "ERROR"
+        else:
+            print("append derived error ",res1.json())
+            return "ERROR"
     else:
-        return 400, res.json()
+        print("authorise derived error ",res.json())
+        return "ERROR"
 
 
 # @app.route("/signTxn", methods=["POST"])
