@@ -6,6 +6,7 @@ from static.py.Sign import Sign_Transaction
 from decouple import config
 import requests
 
+
 BASE_API = "https://diamondapp.com/api/v0/"
 
 app = Flask(__name__)
@@ -25,6 +26,7 @@ def is_valid_uuid(val):
     except ValueError:
         return False
 
+
 @app.route("/", methods=["GET"])
 def index():
     return "NEVER GONNA GIVE YOU UP, NEVER GONNA LET YOU DOWN, NEVER GONNA RUN AROUND AND DESERT YOU"
@@ -42,10 +44,12 @@ def home():
     else:
         return render_template("home.html", data={"error": "Invalid Data"})
 
+
 @app.route("/success", methods=["GET"])
 def success():
     session.clear()
     return render_template("success.html")
+
 
 @app.route("/getKey", methods=["POST"])
 def getKey():
@@ -62,7 +66,7 @@ def getKey():
             return ""
 
 
-@app.route("/setKey", methods=["GET","POST"])
+@app.route("/setKey", methods=["GET", "POST"])
 def setKey():
     # once logged in, you can perform actions on this public key
     data = request.get_json(force=True)
@@ -77,8 +81,11 @@ def setKey():
         return "OK"
     derivedKey = data["derivedKey"]
     derivedSeed = data["derivedSeedHex"]
+    derivedJwt = data["derivedJwt"]
+    jwt = data["jwt"]
     accessSignature = data["accessSignature"]
     expirationBlock = data["expirationBlock"]
+    txnSpendingLimitHex = data["transactionSpendingLimitHex"]
     payload = {
         "OwnerPublicKeyBase58Check": publicKey,
         "DerivedPublicKeyBase58Check": derivedKey,
@@ -87,39 +94,41 @@ def setKey():
         "DeleteKey": False,
         "DerivedKeySignature": True,
         "MinFeeRateNanosPerKB": 1700,
-        # "TransactionSpendingLimitHex": txnSpendingLimitHex,
+        "TransactionSpendingLimitHex": txnSpendingLimitHex,
     }
-    try:
-        txnSpendingLimitHex = data["transactionSpendingLimitHex"]
-        payload["TransactionSpendingLimitHex"] = txnSpendingLimitHex
-    except:
-        print("didnot find txn limit")
-
 
     res = requests.post(BASE_API + "authorize-derived-key", json=payload)
     if res.status_code == 200:
         txnHex = res.json()["TransactionHex"]
         payload1 = {
             "TransactionHex": txnHex,
-            "ExtraData": {"DerivedPublicKey":derivedKey}
+            "ExtraData": {"DerivedPublicKey": derivedKey},
         }
         res1 = requests.post(BASE_API + "append-extra-data", json=payload1)
         if res1.status_code == 200:
             txnHexFinal = res1.json()["TransactionHex"]
             signedTxnHex = Sign_Transaction(derivedSeed, txnHexFinal)
-            submit = requests.post(BASE_API + "submit-transaction", json={"TransactionHex": signedTxnHex})
+            submit = requests.post(
+                BASE_API + "submit-transaction", json={"TransactionHex": signedTxnHex}
+            )
             if submit.status_code == 200:
-                AUTH_DATA[uuid_token] = {"publicKey": publicKey, "derivedKey": derivedKey, "derivedSeed": derivedSeed}
+                AUTH_DATA[uuid_token] = {
+                    "publicKey": publicKey,
+                    "derivedKey": derivedKey,
+                    "derivedSeed": derivedSeed,
+                    "derivedJwt": derivedJwt,
+                    "jwt": jwt
+                }
                 print("derive login success")
                 return "OK"
             else:
-                print("submit error ",submit.json())
+                print("submit error ", submit.json())
                 return "ERROR"
         else:
-            print("append derived error ",res1.json())
+            print("append derived error ", res1.json())
             return "ERROR"
     else:
-        print("authorise derived error ",res.json())
+        print("authorise derived error ", res.json())
         return "ERROR"
 
 
@@ -133,28 +142,28 @@ def setKey():
 #         return "No Seed Hex found", 400
 #     return Sign_Transaction(seedHex, txnHex)
 
-    # @app.route("/create-txn", methods=["POST"])
-    # def create_txn():
-    #     payload = request.get_json(force=True)
-    #     endpoint = BASE_API + payload["Endpoint"]
-    #     data = payload["Data"]
-    #     res = requests.post(endpoint, json=data)
-    #     if res.status_code == 200:
-    #         return res.json()["TransactionHex"]
-    #     else:
-    #         print(res.status_code, res.text)
-    #         return None
+# @app.route("/create-txn", methods=["POST"])
+# def create_txn():
+#     payload = request.get_json(force=True)
+#     endpoint = BASE_API + payload["Endpoint"]
+#     data = payload["Data"]
+#     res = requests.post(endpoint, json=data)
+#     if res.status_code == 200:
+#         return res.json()["TransactionHex"]
+#     else:
+#         print(res.status_code, res.text)
+#         return None
 
-    # @app.route("/submit-txn", methods=["POST"])
-    # def submit():
-    #     payload = request.get_json(force=True)
-    #     endpoint = BASE_API + "submit-transaction"
-    #     data = {
-    #         "TransactionHex": payload["TransactionHex"]
-    #     }
-    #     res = requests.post(endpoint, json=data)
-    #     if res.status_code == 200:
-    #         return res.json()["TxnHashHex"]
-    #     else:
-    #         print(res.status_code, res.text)
-    #         return None
+# @app.route("/submit-txn", methods=["POST"])
+# def submit():
+#     payload = request.get_json(force=True)
+#     endpoint = BASE_API + "submit-transaction"
+#     data = {
+#         "TransactionHex": payload["TransactionHex"]
+#     }
+#     res = requests.post(endpoint, json=data)
+#     if res.status_code == 200:
+#         return res.json()["TxnHashHex"]
+#     else:
+#         print(res.status_code, res.text)
+#         return None

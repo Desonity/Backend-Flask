@@ -106,9 +106,15 @@ function handleDerive(payload) {
             "expirationBlock": payload.expirationBlock,
             "accessSignature": payload.accessSignature,
             "transactionSpendingLimitHex": payload.transactionSpendingLimitHex,
+            "derivedJwt": payload.derivedJwt,
+            "jwt": payload.jwt
         })
             .catch((e) => { console.log(e) })
-            .then((res) => { if (res.data === "OK") window.location.replace('/success'); else alert("unable to perform action") });
+            .then((res) => {
+                if (res.data === "OK") {
+                    // window.location.replace('/success');
+                } else { alert("unable to perform action") }
+            });
 
     }
 
