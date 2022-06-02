@@ -112,7 +112,7 @@ function handleDerive(payload) {
             .catch((e) => { console.log(e) })
             .then((res) => {
                 if (res.data === "OK") {
-                    // window.location.replace('/success');
+                    window.location.replace('/success');
                 } else { alert("unable to perform action") }
             });
 
