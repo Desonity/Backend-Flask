@@ -1,5 +1,8 @@
 # Flask backend for Desonity Identity login
 
+# NOTE: This Repository has been Archived since Heroku stopped free teir.
+# Find new repo deployed on vercel [here](https://Github.com/Desonity/desonity-login)
+
 ## requirements
 
 Python 3.9 or later
